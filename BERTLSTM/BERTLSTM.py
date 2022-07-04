@@ -171,7 +171,85 @@ class TFBertLSTM(Model):
       
       return logits, masked_lm_loss
     return logits
+  
+
+### 3. Training ###
+
+model_name = '/pretrained_model/'
+model = TFBertLSTM(model_name)
+
+
+from transformers import AdamWeightDecay
+
+optimizer = AdamWeightDecay(learning_rate=1e-5)
+optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+
+import time
+from tqdm import tqdm
+
+step_start = time.time()
+
+epochs = 40
+print('+---------+---------------------+----------------------+')
+for epoch in range(epochs):
+  step = 1
+  for inputs in tf_tokenized_train_dataset:
+    loss_total = 0
+    
+    with tf.GradientTape() as tape:
+      logits, loss = model(inputs, training=True)
       
+    trainable_variables = [var for va in model.trainable_variables if var.name not in ['bert/bert/pooler/dense/kernel:0', 'bert/bert/pooler/dense/bias:0']]
+    gradients = tape.gradient(loss, trainable_variables)
+    optimizer.apply_gradients(zip(gradients, trainable_variables))
+    
+    loss_total += loss.numpy().mean()
+    
+    if (step % 4000) == 0:
+      step_end = time.time()
+      print('| Epoch {} | Step {:>5}: {:.5f} | step_time: {:>8.3f} s|'.format(epoch+1, step, loss_total, step_end-step_start))
+      step_start = step_end
+      
+    step += 1
+  print('+---------+---------------------+----------------------+')
+  
+  
+model.bert.save_pretrained(modelpath + '/TFBertLSTM_bert_ep{}'.format(epochs))
+model.save_weights(modelpath + '/TFBertLSTM_ep{}'.format(epochs))
 
 
 
+
+### 4. Evaluation ###
+from IPython.display import display
+
+log_interval = 5000
+correct = p_correct = 0
+for i, x in enumerate(tf_tokenized_test_dataset):
+  logits, _ = model(x, training=False)
+  masks = tf.equal(x['input_ids'], 4)
+  
+  labels = tf.boolean_mask(x['labels'], mask=masks)
+  logits = tf.boolean_mask(logits, mask=masks)
+  
+  predicted_ids = tf.argmax(logits, 1).numpy()
+  predicted_seq = [tokenizer.convert_ids_to_tokens(int(ids)) for ids in predicted_ids]
+  labels_seq = [tokenizer.convert_ids_to_tokens(int(label)) for label in labels]
+  
+  correct   += sum([1/len(labels_seq) if labels_seq[k] == predicted_seq[k] else 0 for k in range(len(labels_seq))])
+  p_correct += sum([1/len(labels_seq) if predicted_seq[k].split("_")[0] in labels_seq[k] else 0 for k in range(len(labels_seq))])
+  
+  
+  if i % log_interval == 0:
+    print('[{:>2}/{:>2}]'.format((i//log_interval)+1, (len(tf_tokenized_test_dataset)//log_interval)+1))
+    print('test_seq', " ".join(tokenizer.convert_ids_to_tokens([int(ids) for ids in x['input_ids'][0] if int(ids) not in [tokenizer.cls_token_id,
+                                                                                                                         tokenizer.pad_token_id,
+                                                                                                                         tokenizer.sep_token_id,
+                                                                                                                         tokenizer.mask_token_id]])))
+    display(pd.concat([pd.DataFrame(labels_seq, columns=['answer']).transpose(),
+                       pd.DataFrame(predicted_seq, columns=['answer']).transpose()]))
+    
+    
+print('Accuracy :', round(correct)/len(tf_tokenized_test_datset), 4))
+print('p_Accuracy :', round(p_correct)/len(tf_tokenized_test_datset), 4))
+                                                            
