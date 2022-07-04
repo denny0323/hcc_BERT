@@ -151,7 +151,27 @@ class TFBertLSTM(Model):
     self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
       from_logits=True, reduction=tf.keras.losses.Reduction.NONE 
     )
-
+  
+  def call(self, inputs):
+    bert_output = self.bert(input_ids = inputs['input_ids'],
+                            attention_mask = inputs['attention_mask'],
+                            token_type_ids = inputs['token_type_ids'],
+                            training=self.training)[0] # last_hidden_state
+    lstm_output = self.LSTM(bert_output) # return_sequence=True : 512 sequence output
+    logits = self.dense(lstm_output)
+    
+    if 'labels' in list(inputs.keys()):
+      masked_lm_active_loss = tf.not_equal(inputs['labels'], -100)
+      
+      masked_lm_labels = tf.boolean_mask(inputs['labels'], mask=masked_lm_active_loss)
+      masked_lm_reduced_logits = tf.boolean_mask(logits, mask=masked_lm_active_loss)
+      
+      masked_lm_loss = self.loss_fn(masked_lm_labels, masked_lm_reduced_logits)
+      masked_lm_loss = tf.reduce_mean(masked_lm_loss)
+      
+      return logits, masked_lm_loss
+    return logits
+      
 
 
 
