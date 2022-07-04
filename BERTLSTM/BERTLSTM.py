@@ -87,4 +87,51 @@ def tokenize_fn(data):
     result['labels'] += [-100]*(256-len(result['labels']))
   
   return result
-    
+
+
+
+from datasets import Dataset
+
+train_set = Dataset.from_pandas(train)
+test_set  = Dataset.from_pandas(test)
+
+
+import datasets
+datasets.config.MAX_TABLE_NBYTES_FOR_PICKLING /= 10
+
+def set_tempdir():
+  return '/myLocalWorkSpace'
+
+from datasets import table
+table.tempfile._get_default_tempdir = set_tempdir
+table.tempfile.tempdir = '/myLocalWorkSpace'
+
+
+tokenized_train_dataset = train_set.map(tokenized_fn, num_proc = 12, remove_columns=['paragraph', 'col1', 'col2']) # 우회된 경로에 .arrow 임시파일 생성, remove_column의 이름은 임시로 작성
+tokenized_test_dataset  = test_set.map(tokenized_fn, num_proc = 12, remove_columns=['paragraph', 'col1', 'col2'])
+del train_set, test_set
+
+gc.collect()
+
+
+from transformers import DefaultDataCollator
+data_collator = DefaultDataCollator(return_tensors='tf')
+
+tf_tokenized_train_dataset = tokenized_train_dataset.to_tf_dataset(columns=list(tokenized_train_dataset.keys()),
+                                                                    shuffle=False,
+                                                                    batch_size=32,
+                                                                    collate_fn=data_collator,
+                                                                    drop_remainder=False,
+
+tf_tokenized_test_dataset = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.keys()),
+                                                                    shuffle=False,
+                                                                    batch_size=1,
+                                                                    collate_fn=data_collator,
+                                                                    drop_remainder=False,
+del tokenized_train_dataset, tokenized_test_dataset
+                                                                 
+                                                                 
+                                                                 
+                                                                 
+### 2. model ###
+
