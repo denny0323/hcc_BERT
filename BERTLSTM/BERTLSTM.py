@@ -121,17 +121,37 @@ tf_tokenized_train_dataset = tokenized_train_dataset.to_tf_dataset(columns=list(
                                                                     shuffle=False,
                                                                     batch_size=32,
                                                                     collate_fn=data_collator,
-                                                                    drop_remainder=False,
+                                                                    drop_remainder=False)
 
 tf_tokenized_test_dataset = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.keys()),
                                                                     shuffle=False,
                                                                     batch_size=1,
                                                                     collate_fn=data_collator,
-                                                                    drop_remainder=False,
+                                                                    drop_remainder=False)
 del tokenized_train_dataset, tokenized_test_dataset
                                                                  
                                                                  
                                                                  
                                                                  
-### 2. model ###
+### 2. model : BERT + LSTM ###
+from transformers import TFBertModel
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import TimeDistributed, Dense, LSTM
+
+
+class TFBertLSTM(Model):
+  def __init__(self, pretrained_bert, training=False):
+    super(TFBertLSTM, self).__init__()
+    self.training = training
+    
+    self.bert = TFBertModel.from_pretrained(modelpath + pretrained_bert, name='bert')
+    self.LSTM = LSTM(self.bert.config.hidden_size, return_sequences=True, name='lstm')
+    self.dense = TimeDistributed(Dense(self.bert.config.vocab_size), name='dense')
+    
+    self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
+      from_logits=True, reduction=tf.keras.losses.Reduction.NONE 
+    )
+
+
+
 
