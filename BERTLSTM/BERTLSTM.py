@@ -175,7 +175,7 @@ class TFBertLSTM(Model):
 
 ### 3. Training ###
 
-model_name = '/pretrained_model/'
+model_name = '/pretrained_model/model.h5'
 model = TFBertLSTM(model_name)
 
 
@@ -184,9 +184,8 @@ from transformers import AdamWeightDecay
 optimizer = AdamWeightDecay(learning_rate=1e-5)
 optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
 
-import time
-from tqdm import tqdm
 
+import time
 step_start = time.time()
 
 epochs = 40
