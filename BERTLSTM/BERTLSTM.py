@@ -117,13 +117,13 @@ gc.collect()
 from transformers import DefaultDataCollator
 data_collator = DefaultDataCollator(return_tensors='tf')
 
-tf_tokenized_train_dataset = tokenized_train_dataset.to_tf_dataset(columns=list(tokenized_train_dataset.keys()),
+tf_tokenized_train_dataset = tokenized_train_dataset.to_tf_dataset(columns=list(tokenized_train_dataset.features.keys()),
                                                                     shuffle=False,
                                                                     batch_size=32,
                                                                     collate_fn=data_collator,
                                                                     drop_remainder=False)
 
-tf_tokenized_test_dataset = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.keys()),
+tf_tokenized_test_dataset = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.features.keys()),
                                                                     shuffle=False,
                                                                     batch_size=1,
                                                                     collate_fn=data_collator,
