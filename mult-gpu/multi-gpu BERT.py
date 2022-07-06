@@ -97,14 +97,14 @@ data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, m
 BATCH_SIZE = 32
 GLOBAL_BATCH_SIZE = strategy.num_replicas_in_sync * BATCH_SIZE
 
-tf_tokenized_train_dataset = tokenized_train_dataset.to_tf_dataset(columns=list(tokenized_train_dataset.keys()),
+tf_tokenized_train_dataset = tokenized_train_dataset.to_tf_dataset(columns=list(tokenized_train_dataset.features.keys()),
                                                                     shuffle=True,
                                                                     batch_size=GLOBAL_BATCH_SIZE,
                                                                     collate_fn=data_collator,
                                                                     drop_remainder=False,
                                                                     prefetch=1)
                                                                     
-tf_tokenized_test_dataset = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.keys()),
+tf_tokenized_test_dataset = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.features.keys()),
                                                                     shuffle=False,
                                                                     batch_size=GLOBAL_BATCH_SIZE,
                                                                     collate_fn=data_collator,
