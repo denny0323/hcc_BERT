@@ -156,6 +156,8 @@ class TFBertEmbeddings(tf.keras.layers.Layer):
         self.initializer_range = config.initializer_range
         self.LayerNorm = tf.keras.layers.LayerNormalization(epsilon=config.layer_norm_eps, name="LayerNorm")
         self.dropout = tf.keras.layers.Dropout(rate=config.hidden_dropout_prob)
+        self.time_span = config.time_span
+        self.spending_span = config.spending_span
 
     def build(self, input_shape: tf.TensorShape):
         with tf.name_scope("word_embeddings"):
@@ -183,7 +185,7 @@ class TFBertEmbeddings(tf.keras.layers.Layer):
         with tf.name_scope("time_embeddings"):
             self.time_embeddings = self.add_weight(
                 name="embeddings",
-                shape=[self.max_position_embeddings, self.hidden_size],
+                shape=[self.time_span, self.hidden_size],
                 initializer=get_initializer(self.initializer_range),
             )
             
@@ -191,7 +193,7 @@ class TFBertEmbeddings(tf.keras.layers.Layer):
         with tf.name_scope("spending_embeddings"):
             self.spending_embeddings = self.add_weight(
                 name="embeddings",
-                shape=[self.max_position_embeddings, self.hidden_size],
+                shape=[self.spending_span, self.hidden_size],
                 initializer=get_initializer(self.initializer_range),
             )
             
@@ -232,20 +234,17 @@ class TFBertEmbeddings(tf.keras.layers.Layer):
             
         ######## custom ids ########
         if time_ids is None:
-            self.time_embeddings[0] = tf.zeros([1, self.hidden_size])
-            time_ids = tf.fill(dims=input_shape, value=0)
-            
+            time_embeds = tf.zeros(shape=[self.time_span, self.hidden_size], dtype=tf.float32)
+        else:
+            time_embeds = tf.gather(params=self.time_embeddings, indices=time_ids)
+                                                                            
         if spending_ids is None:
-            self.spending_embeddings[0] = tf.zeros([1, self.hidden_size])
-            spending_ids = tf.fill(dims=input_shape, value=0)
-        
+            spending_embeds = tf.zeros(shape=[self.spending_span, self.hidden_size], dtype=tf.float32)
+        else:
+            spending_embeds = tf.gather(params=self.spending_embeddings, indices=spending_ids)
+
         position_embeds = tf.gather(params=self.position_embeddings, indices=position_ids)
         token_type_embeds = tf.gather(params=self.token_type_embeddings, indices=token_type_ids)
-        
-        ######## custom embiddings ########
-        time_embeds = tf.gather(params=self.time_embeddings, indices=time_ids)
-        spending_embeds = tf.gather(params=self.spending_embeddings, indices=time_ids)
-        
         final_embeddings = inputs_embeds + position_embeds + token_type_embeds
         final_embeddings = self.LayerNorm(inputs=final_embeddings)
         final_embeddings = self.dropout(inputs=final_embeddings, training=training)
