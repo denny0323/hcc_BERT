@@ -771,6 +771,8 @@ class TFBertMainLayer(tf.keras.layers.Layer):
         attention_mask: Optional[Union[np.ndarray, tf.Tensor]] = None,
         token_type_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
         position_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
+        time_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
+        spending_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
         head_mask: Optional[Union[np.ndarray, tf.Tensor]] = None,
         inputs_embeds: Optional[Union[np.ndarray, tf.Tensor]] = None,
         encoder_hidden_states: Optional[Union[np.ndarray, tf.Tensor]] = None,
@@ -782,6 +784,27 @@ class TFBertMainLayer(tf.keras.layers.Layer):
         return_dict: Optional[bool] = None,
         training: bool = False,
     ) -> Union[TFBaseModelOutputWithPoolingAndCrossAttentions, Tuple[tf.Tensor]]:
+        inputs = input_processing(
+            func=self.call,
+            config=self.config,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            time_ids=time_ids,
+            spending_ids=spending_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            encoder_hidden_states=encoder_hidden_states,
+            encoder_attention_mask=encoder_attention_mask,
+            past_key_values=past_key_values,
+            use_cache=use_cache, 
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+            training=training,
+            kwargs_call=kwargs,
+        )
 
         if not self.config.is_decoder:
             use_cache = False
@@ -810,12 +833,14 @@ class TFBertMainLayer(tf.keras.layers.Layer):
             token_type_ids = tf.fill(dims=input_shape, value=0)
 
         embedding_output = self.embeddings(
-            input_ids=input_ids,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            inputs_embeds=inputs_embeds,
+            input_ids=inputs['input_ids'],
+            position_ids=inputs['position_ids'],
+            token_type_ids=inputs['token_type_ids'],
+            time_ids=inputs['time_ids'],
+            spending_ids=inputs['spending_ids'],
+            inputs_embeds=inputs['inputs_embeds'],
             past_key_values_length=past_key_values_length,
-            training=training,
+            training=inputs['training'],
         )
 
         # We create a 3D attention mask from a 2D tensor mask.
@@ -894,15 +919,15 @@ class TFBertMainLayer(tf.keras.layers.Layer):
         encoder_outputs = self.encoder(
             hidden_states=embedding_output,
             attention_mask=extended_attention_mask,
-            head_mask=head_mask,
-            encoder_hidden_states=encoder_hidden_states,
+            head_mask=inputs['head_mask'],
+            encoder_hidden_states=inputs['encoder_hidden_states'],
             encoder_attention_mask=encoder_extended_attention_mask,
-            past_key_values=past_key_values,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-            training=training,
+            past_key_values=inputs['past_key_values'],
+            use_cache=inputs['use_cache'],
+            output_attentions=inputs['output_attentions'],
+            output_hidden_states=inputs['output_hidden_states'],
+            return_dict=inputs['return_dict'],
+            training=inputs['training'],
         )
 
         sequence_output = encoder_outputs[0]
@@ -1338,6 +1363,8 @@ class TFBertForMaskedLM(TFBertPreTrainedModel, TFMaskedLanguageModelingLoss):
         attention_mask: Optional[Union[np.ndarray, tf.Tensor]] = None,
         token_type_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
         position_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
+        time_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
+        spending_ids: Optional[Union[np.ndarray, tf.Tensor]] = None,
         head_mask: Optional[Union[np.ndarray, tf.Tensor]] = None,
         inputs_embeds: Optional[Union[np.ndarray, tf.Tensor]] = None,
         output_attentions: Optional[bool] = None,
@@ -1352,21 +1379,41 @@ class TFBertForMaskedLM(TFBertPreTrainedModel, TFMaskedLanguageModelingLoss):
             config.vocab_size]` (see `input_ids` docstring) Tokens with indices set to `-100` are ignored (masked), the
             loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
         """
-        outputs = self.bert(
+        inputs = input_processing(
+            func=self.call,
+            config=self.config,
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
+            time_ids=time_ids,
+            spending_ids=spending_ids,
             head_mask=head_mask,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            labels=labels,
             training=training,
+            kwargs_call=kwargs,
+        )
+        outputs = self.bert(
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            token_type_ids=inputs['token_type_ids'],
+            position_ids=inputs['position_ids'],
+            time_ids=inputs['time_ids'],
+            spending_ids=inputs['spending_ids'],
+            head_mask=inputs['head_mask'],
+            inputs_embeds=inputs['inputs_embeds'],
+            output_attentions=inputs['output_attentions'],
+            output_hidden_states=inputs['output_hidden_states'],
+            return_dict=inputs['return_dict'],
+            training=inputs['training'],
         )
         sequence_output = outputs[0]
         prediction_scores = self.mlm(sequence_output=sequence_output, training=training)
-        loss = None if labels is None else self.hf_compute_loss(labels=labels, logits=prediction_scores)
+        loss = None if inputs['labels'] is None else self.hf_compute_loss(labels=inputs['labels'], logits=prediction_scores)
 
         if not return_dict:
             output = (prediction_scores,) + outputs[2:]
