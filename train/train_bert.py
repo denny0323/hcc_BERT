@@ -50,8 +50,31 @@ hs = Hyspark('{}_dataloading_{}'.format(employee_id, curr_time), mem_per_core=2)
 hc, sc, ss = hs.hive_context, hs.spark_context, hs.spark_session
 check_hive_available(hc) ## custom function, result True
 
-query = hc.sql(""" QUERY """)
-df = df_as_pandas_with_pyspark(query) ## custom function
+ps_df = hc.sql(""" QUERY """)
+ps_df_grp = ps_df.groupby('column1').agg(
+  F.concat_ws(' ', F.collect_list('evnt')).alias('evnt')
+).orderBy('column1')
+
+df = df_as_pandas_with_pyspark(ps_df)
 hs.stop()
 
+from sklearn.model_selection import train_test_split
+
+train, test = train_test_split(df, test_size=.2, random_state=42)
+train, valid = train_test_split(train, test_size=.1, random_state=42)
+del df
+
+train_dataset = Dataset.from_pandas(pd.DataFrame(train))
+valid_dataset = Dataset.from_pandas(pd.DataFrame(valid))
+del train, valid
+
+MAX_LENGTH = 256
+SHORT_SEQ_PROB = 0.1
+MLM_PROB = 0.15
+
+TRAN_BATCH_SIZE = 32
+MAX_EPOCH = 100
+LEARNING_RATE = 3e-4
+
+CHUNK_SIZE = MAX_LENGTH-2
 
