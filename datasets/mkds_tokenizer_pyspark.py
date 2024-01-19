@@ -78,10 +78,44 @@ for cd, col in df_dict.items():
       WHERE a.column5 ='{cd}' and a.part_yrmn BETWEEN '{START_YRMN}' and '{END_YRMN}'
     """)
 
-  
+  else:
+    df = hc.sql(f"""
+      SELECT a.column1, a.column2,
+        CASE
+          WHEN a.column3 IS NOT NULL THEN a.column3
+          WHEN a.column3 IS NULL THEN '000000'
+        END AS a.column3, concat(a.{col[0]}, '_', a.{col[1]}) as evnt, 
+        a.column5
+      FROM {db_name}{tbl_name} AS a
+      WHERE a.column5 ='{cd}' and a.part_yrmn BETWEEN '{START_YRMN}' and '{END_YRMN}'
+    """)
 
 
+from functools import reduce
+from pyspark.sql import DataFrame
+import re
+df_series = reduce(DataFrame.unionAll, df_list)
 
+# check NULL event 
+# df_series.filter(F.col('evnt').isNull()).limit(10).toPandas()
+# print(df_series.filter(F.col('evnt').isNull()).select('column5').distinct().collect())
+# print(df_series.filter(F.col('evnt').isNull()).count())
+
+# space, 특수문자 처리
+@udf(returnType=StrintType())
+def parseEvent(evnt:str):
+  evnt_parsed = evnt.replace(' ', '')
+  evnt_parsed = re.sub(r'[\uC00-\uD7A30-9a-zA-Z]', '_', evnt_parsed)
+  return evnt_parsed
+
+# underbar 전처리(제거)
+@udf(returnType=StirngType())
+def parseEvent_underbar(evnt:str):
+  evnt_parsed = evnt.replace('_', '')
+  return evnt_parsed
+
+
+df_series_ordered = df_series.orderBy(column1, column2, column3)
 
 
 
