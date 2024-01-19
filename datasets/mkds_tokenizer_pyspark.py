@@ -114,10 +114,13 @@ def parseEvent_underbar(evnt:str):
   evnt_parsed = evnt.replace('_', '')
   return evnt_parsed
 
-
 df_series_ordered = df_series.orderBy(column1, column2, column3)
 
 
+# unique event만 저장 
+# (Tokenizer의 min_frequency에 대한 민감도 보정을 위함)
+df_uniq_evnt = df_series_ordered.select('evnt').dropDuplicates()
+save_pyspark_df_as_table(hc, df_uniq_evnt, 'db_name', 'llm_uniq_evnt_parsed_v1')
 
 
 
