@@ -3,9 +3,6 @@
 '''
 
 import sys
-
-import keras.losses
-
 sys.path.append('../utils/')
 
 from spark_hive_utils import *
