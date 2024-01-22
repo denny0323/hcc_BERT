@@ -342,6 +342,65 @@ def valid_on_batch(model, tensor_val):
     return {'val_loss': val_loss_tracker.result(), 'val_acc': val_acc_metric.result(),
             'val_microf1': val_microf1_metric.result(), 'val_macrof1': val_macrof1_metric.result()}
 
+@tf.function
+def distributed_test_step(model, tensors):
+    return strategy.run(valid_on_batch, args=(model, tensors))
 
 
+epochs = 5
+metric_names = ['train_loss', 'train_acc', 'val_loss']
 
+for epoch in range(1, epochs+1):
+
+    print("\nEpoch {}/{}".format(epoch, epochs))
+    progBar = Progbar(len(tokenized_train_dataset_tf), stateful_metrics=metric_names, interval=0.3)
+
+    for step, tensors in enumerate(tokenized_train_dataset_tf):
+
+        callbacks.on_batch_begin(step, logs=logs)
+        callbacks.on_train_batch_begin(step, logs=logs)
+
+        ## Train Loss & Back Prop
+        train_loss, logits, train_dict = distributed_train_step(model, tensors)
+
+        ## Tracking Train metrics
+        loss["train_loss"] = train_dict["train_loss"]
+
+        callbacks.on_train_batch_end(step, logs=logs)
+        callbacks.on_batch_end(step, logs=logs)
+
+        values = [('train_loss', train_dict['train_loss']), ('train_acc', train_dict['train_acc']),
+                 ('train_macrof1', train_dict['train_macrof1']), ('train_microf1', train_dict['train_micref1'])]
+        
+        progBar.update(step+1, values=values)
+
+    train_acc_metric.reset_states()
+    train_microf1_metric.reset_states()
+    train_macrof1_metric.reset_states()
+
+
+    for step_val, tensors_val in enumerate(tokenized_valid_datasets_tf):
+
+        callbacks.on_batch_begin(step_val, logs=logs)
+        callbacks.on_test_batch_begin(step_val, logs=logs)
+
+        ## Valid Loss & Back Prop
+        valid_dict = distributed_test_step(model, tensors_val)
+
+        callbacks.on_test_batch_end(step_val, logs=logs)
+        callbacks.on_batch_end(step_val, logs=logs)
+
+    values = [('train_loss', train_loss), ('train_acc', train_dict['train_acc']), 
+              ('val_loss', valid_dict['val_loss']), ('val_acc', valid_dict['val_acc']),
+              ('val_macrof1', valid_dict['val_macrof1']), ('val_microf1', valid_dict['val_microf1'])]
+
+    logs['val_loss'] = val_loss_tracker.result()
+
+    val_acc_metric.reset_states()
+    val_microf1_metric.reset_states()
+    val_macrof1_metric.reset_states()
+
+    callbacks.on_epoch_end(epoch, logs=logs)
+    progBar.update(step+1, values=values, finalize=True)
+
+    callbacks.on_train_end(logs=logs)
