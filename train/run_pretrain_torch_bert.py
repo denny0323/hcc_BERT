@@ -79,7 +79,7 @@ MAX_LENGTH = 256
 SHORT_SEQ_PROB = 0.1
 MLM_PROB = 0.15
 
-TRAN_BATCH_SIZE = 32
+TRAIN_BATCH_SIZS = 32
 MAX_EPOCH = 100
 LEARNING_RATE = 3e-4
 
@@ -210,7 +210,7 @@ from transformers import Trainer, TrainingArguments
 training_args = TrainingArguments(
     output_dir='/BERT_Small_PT',
     num_train_epochs=MAX_EPOCH,
-    per_device_train_batch_size=int(TRAN_BATCH_SIZE/torch.cuda.device_count()),
+    per_device_train_batch_size=int(TRAIN_BATCH_SIZS/torch.cuda.device_count()),
     per_device_eval_batch_size=4,
     warmup_steps=10,
     learning_rate=LEARNING_RATE,
