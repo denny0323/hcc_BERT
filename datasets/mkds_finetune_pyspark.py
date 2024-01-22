@@ -9,6 +9,8 @@ from hyspark import Hyspark
 now= datetime.now()
 curr_time = now.strftime('%H:%M:%S')
 
+import sys
+sys.path.append('../utils')
 from spark_hive_utils import *
 
 def get_employee_id():
@@ -131,15 +133,68 @@ def ToLabel(evnt:str) -> int:
             return MccnDict[Mccn]
     return 0
 
-
-
-
-
-
+df_labeled = df_series_ordered.withColumn('label', ToLabel(df_series_ordered.evnt))
 
 
 df_agg = df_series_ordered.groupby('column1', 'column2')\
-                          .agg(F.collect_list('evnt').alias('evnt'))\
+                          .agg(F.collect_list('evnt').alias('evnt'),
+                               F.collect_list('label').alias('label'))\
                           .orderBy('column1', 'column2')
 
-df_agg2 = df_agg.withColumn('evnt', F.concat_ws(' ', 'evnt'))
+from pyspark.sql.window import Window
+days = lambda d: d * 86400
+
+y_timespan = 7
+x_timespan = 30
+
+windowSpec_y = Window.partitionBy('column1').orderBy(F.col('column2').cast('timestamp').cast('long'))\
+                                            .rangeBetween(1, days(y_timespan))
+
+df_y = df_agg.withColumn('y'. F.concat_ws(' ', F.collect_list('label')\
+                                                .over(windowSpec_y)))\
+             .orderBy('column1', 'column2')
+
+windowSpec_x = Window.partitionBy('column1').orderBy(F.col('column2').cast('timestamp').cast('long'))\
+                                            .rangeBetween(-days(x_timespan), Window.currentRow)
+
+df_xy = df_y.withColumn('x', F.concat_ws(' ', F.collect_list('evnt').over(windowSpec_x)))\
+            .orderBy('column1', 'column2')
+
+
+from pyspark.sql.types import ArrayType, IntegerType
+from pyspark.sql.functions import udf
+
+@udf(returnType=ArrayType(IntegerType()))
+def multi_labelize(col):
+    week_y = [0] * 7
+    distinct_labels = list(map(int, set(col.split())))
+    distinct_labels = [label for label in distinct_labels if label] ## 0이 아닌 label들만 select
+    if not sum(distinct_labels): ## all_zeros -> 모두 0으로 return
+        return week_y
+    else:
+        for label in distinct_labels:
+            if label == 0:
+                week_y[label] = 1
+            else:
+                week_y[label-1] = 1
+        return week_y
+
+df = df_xy.withColumn('y', multi_labelize(df_xy.y))
+
+@udf(returnType=IntegerType())
+def sum_list(col):
+    return sum(col)
+
+# non-zero (안 그러면 label에 0이 너무 많아짐: imbalanced)
+df_nz = df.select('column1', 'column2', 'x', 'y')\
+          .withColumn('sum', sum_list(F.col('y')))\
+          .filter(F.col('sum') > 0)\
+          .orderBy('column1', 'column2')\
+          .select('column1', 'column2', 'x', 'y')
+
+
+
+db_name = 'my_db_nm'
+table_name = 'my_tbl_nm'
+with elapsed_time():
+    save_pyspark_df_as_table(hc, df_nz, db_name, table_name)
