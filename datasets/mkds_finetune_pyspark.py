@@ -110,6 +110,19 @@ df_series = reduce(DataFrame.unionAll, df_list)
 df_series_ordered = df_series.orderBy('column1', 'column2', 'column3')
 
 
+from pyspark.sql.types import ArrayType, StringType, IntegerType
+from pyspark.sql.functions import udf
+
+@udf(returnType=IntegerType())
+def ToLabel(evnt:str) -> int:
+
+
+
+
+
+
+
+
 df_agg = df_series_ordered.groupby('column1', 'column2')\
                           .agg(F.collect_list('evnt').alias('evnt'))\
                           .orderBy('column1', 'column2')
