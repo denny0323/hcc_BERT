@@ -115,6 +115,21 @@ from pyspark.sql.functions import udf
 
 @udf(returnType=IntegerType())
 def ToLabel(evnt:str) -> int:
+    evnt = str(evnt)
+    MccnDict = {'mccn1': 1,
+                'mccn2': 2,
+                'mccn3': 3,
+                'mccn4': 4,
+                'mccn5-1': 5, 'mccn5-2':5, 'mccn5-3':5,
+                'mccn6-1': 6, 'mccn6-2': 6,
+                'mccn7-1': 7, 'mccn7-2': 7, 'mccn7-3':7, 'mccn7-4':7}
+
+    for Mccn in MccnDict.keys():
+        if evnt == 'mccn4':
+            return MccnDict[evnt]
+        elif Mccn in evnt:
+            return MccnDict[Mccn]
+    return 0
 
 
 
