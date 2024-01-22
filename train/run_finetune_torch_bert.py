@@ -282,3 +282,14 @@ trainer = Trainer(
 )
 
 trainer.train()
+
+'''
+TypeError: Caught TypeError in replica 0 on device 0.
+Original Traceback (most recent call last):
+    File "~/torch/nn/parallel/parallel_apply.py" line 61, in _worker
+        output = module(*input, **kwargs)
+    FIle "~/torch/nn/modules/module.py" line 1102, in _call_impl
+        return forward_call(*output, **kwargs)
+TypeError: forward() got an unexpected keyword argument 'labels'
+'''
+'''
