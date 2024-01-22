@@ -1,4 +1,6 @@
-### 0. settings ###
+'''
+  0. Settings 
+'''
 import tensorflow as tf
 import pandas as pd
 import numpy as np
@@ -48,7 +50,12 @@ query = hc.sql(""" QUERY """)
 df = df_as_pandas_with_pyspark(query) ## custom function
 hs.stop()
 
-#### 1. preprocessing ###
+
+
+'''
+    1.  Pre-processing
+'''
+
 
 Last_N = 5
 df.paragraph = df.paragraph.apply(lambda x: x.split(" ")[:-Last_N])
@@ -66,7 +73,6 @@ tokenizer.eos_token = tokenizer.sep_token
 
 
 from sklearn.model_selection import train_test_split
-
 train, test = train_test_split(df, test_size=.2, random_state=42)
 
 
@@ -133,7 +139,10 @@ del tokenized_train_dataset, tokenized_test_dataset
                                                                  
                                                                  
                                                                  
-### 2. model : BERT + LSTM ###
+'''
+    2.  Build model : BERT + LSTM 
+'''
+
 from transformers import TFBertModel
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import TimeDistributed, Dense, LSTM
@@ -173,7 +182,9 @@ class TFBertLSTM(Model):
     return logits
   
 
-### 3. Training ###
+'''
+    3.  Training
+'''
 
 model_name = '/pretrained_model/model.h5'
 model = TFBertLSTM(model_name)
@@ -219,7 +230,9 @@ model.save_weights(modelpath + '/TFBertLSTM_ep{}'.format(epochs))
 
 
 
-### 4. Evaluation ###
+'''
+    4. Evaluation 
+'''
 from IPython.display import display
 
 log_interval = 5000
