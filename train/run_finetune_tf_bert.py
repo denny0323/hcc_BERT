@@ -404,3 +404,85 @@ for epoch in range(1, epochs+1):
     progBar.update(step+1, values=values, finalize=True)
 
     callbacks.on_train_end(logs=logs)
+
+
+'''
+    6. Evaluate
+'''
+
+test_set = Dataset.from_pandas(test)
+tokenized_test_dataset = test_set.map(
+    tokenize_fn, batched=True, num_proc=8, remove_columns=test_set.features
+)
+
+tokenized_test_dataset_tf = tokenized_test_dataset.to_tf_dataset(columns=list(tokenized_test_dataset.features.keys())
+                                                                 shuffle=True,
+                                                                 batch_size=1024,
+                                                                 collate_fn=data_collator,
+                                                                 drop_remainder=False,
+                                                                 prefetch=1)
+
+from tqdm import tqdm_notebook as tqdm
+from tensorflow.keras.metrics import AUC
+
+import warnings
+warnings.filterwarnings('ignore')
+
+AUROC = AUC(curve='ROC')
+AUPRC = AUC(curve='PR')
+
+test_labels = []
+pred_probas = []
+predicts = []
+for test_tensors in tqdm(tokenized_test_dataset_tf, position=0, leave=True):
+    test_output = model(test_tensors, training=False)
+    test_loss, test_logits = test_output.loss, test_output.logits
+
+    y_pred = tf.greater(tf.sigmoid(tesg_logits), 0.5)
+    y_pred = tf.cast(y_pred, dtype=tf.float32)
+    y_test = test_tensors['labels']
+
+    AUROC.update_state(y_test, y_pred)
+    AUPRC.update_state(y_test, y_pred)
+
+    test_labels.append(y_test)
+    pred_probas.append(tf.sigmoid(test_logits))
+    predicts.append(y_pred)
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import matplotlib
+import matplotlib.font_manager as fm
+
+font_path = '/usr/share/fonts/nhn-nanum/NanumGothic.ttf'
+font = fm.FontProperties(fname=font_path).get_name()
+matplotlib.rc('font', family=font)
+
+titile_classlabels = ['class_1']
+
+def print_confusion_matrix(confusion_matrix, axes,
+                           class_label, class_name, fontsize=10):
+    group_counts = ["{0:0.0f}".format(value) for value in confusion_matrix.flatten()]
+    group_percentages = ["{0:.3f}".format(value) for value in confusion_matrix.flatten() / np.sum(confusion_matrix)]
+    labels = [f"{v1}\n\n({v2})" for v1, v2 in zip(group_percentages, group_counts)]
+    labels = np.asarray(labels).reshape(2, 2)
+    heatmap = sns.heatmap(confusion_matrix, 
+                          annot=labels, fmt="", cmap="Blues", linewidths=.2,
+                          cbar=False, ax=axes, annot_kws={"size":12})
+    heatmap.yaxis.set_ticklabels(heatmap.yaxis.get_ticklabels(), rotation=0, ha='right', fontsize=fontsize)
+    heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=0, ha='right', fontsize=fontsize)
+
+    axes.set_ylabel('True')
+    axes.set_xlabel('Predicted')
+    axes.set_title(class_label)
+
+
+predicts = np.vstack
+
+
+
+from sklearn.metrics import confusion_matrix
+
+cfm = confusion_matrix(test_labels, predicts)
+
