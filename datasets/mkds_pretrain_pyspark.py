@@ -1,3 +1,8 @@
+'''
+    0. Settings
+'''
+
+
 from datetime import datetime
 from hyspark import Hyspark
 
@@ -18,6 +23,13 @@ hs = HySpark(f'{employee_id}_seqdata_tokenizer_LLM_{curr_time}',
 
 hc, sc, ss = hs.hive_context, hs.spark_context, hs.spark_session
 check_hive_available(hc)
+
+
+
+
+'''
+    1. Make Datasets
+'''
 
 
 # masking - 사내 데이터 구조 및 스키마
@@ -98,9 +110,55 @@ df_series = reduce(DataFrame.unionAll, df_list)
 df_series_ordered = df_series.orderBy('column1', 'column2', 'column3')
 
 
-df_agg = df_series_ordered.groupby('column1', 'column2').agg(
-  F.collect_list('evnt').alias('evnt') 
-).orderBy('column1', 'column2')
+df_agg = df_series_ordered.groupby('column1', 'column2')\
+                          .agg(F.collect_list('evnt').alias('evnt'))\
+                          .orderBy('column1', 'column2')
+
+df_agg2 = df_agg.withColumn('evnt', F.concat_ws(' ', 'evnt'))
+
+'''
+    1.1  Weekly
+'''
+df_agg_w = df_agg2.withColumn('evnt_w', F.weekofyear(df_agg.column2))
+df_agg_w2 = df_agg_w.groupby('column1',
+                            F.year('column2').alias('year'),
+                            F.month('column2').alias('month'),
+                            'evnt_w')\
+                    .agg(F.collect_list('evnt').alias('evnt'))\
+                    .orderBy('column1', 'year', 'month', 'evnt_w')
+df_agg_w2 = df_agg_w2.withColumn('evnt', F.concat_ws(' ', 'evnt'))
+
+
+
+'''
+    1.2  Monthly
+'''
+df_agg3 = df_agg2.groupby('column1', 
+                          F.year('column2').alias('year'),
+                          F.month('column2').alias('month')\
+                  .agg(F.collect_list('evnt').alias('evnt'))\
+                  .orderBy('column1', 'year', 'month')
+df_agg3 = df_agg3.withColumn('evnt', F.concat_ws(' ', 'evnt'))
+df_agg4 = df_agg3.withColumn('date', F.concat_ws('-', F.col('year'), F.col('month'))\
+                             .cast('date')\
+                             .drop('year', 'month')
+
+
+
+'''
+    2. Save & Upload to HiveDB
+'''
+db_to_save = 'my_db_name'
+table_save_w = 'my_table_name_w'
+table_save_m = 'my_table_name_m'
+with elapsed_time():
+    save_pyspark_df_as_table(hc, df_agg_w2, db_to_save, table_save_w)
+    save_pyspark_df_as_table(hc, df_agg4, db_to_save, table_save_m)
+                             
+                          
+
+
+
 
 
 
