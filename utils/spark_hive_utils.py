@@ -247,6 +247,34 @@ def copy_local_to_hdfs(source_local, dest_uri='.'):
     return cmd_executor('hdfs dfs -put %s %s' % (source_local, dest_uri))
 
 
+# Source URI (Uniform Resource Identifier)로부터 Local Destination으로의
+# 파일(디렉토리 구조도 포함) 복사 함수 (cmd_executor 함수 이용)
+
+'''
+Parameters:
+    source_uri: 복사해 오려는 HDFS파일주소 (hdfs://주소 or 파일의 절대/상대 주소)
+                (예: HDFS의 사용자 홈 디렉토리의 'abc'파일이면, '/user/사번/abc/' 또는 'abc/'
+    dest_local: 파일이 현재 (분석) 서버로 복사되어 올 위치 (또는 파일명)
+                (예: '.'이면 Current Working Directory이며, Linux의 절대/상대 주소로 입력 가능)
+
+Return: hdfs dfs 툴의 표준 출력을 문자열로 리턴함
+'''
+def copy_hdfs_to_local(source_uri, dest_local='.'):
+    return cmd_executor('hdfs dfs -copyToLocal %s %s' %(source_uri, dest_local))
+
+# HDFS에서 URI에 해당되는 파일, 디렉토리 삭제 (디렉토리 내부도 Recursively삭제)
+'''
+Parameters:
+    uri: HDFS에서 지우고자 하는 파일 또는 디렉토리
+    skip_trash:  True일 경우, 휴지통으로 보내지 않고 바로 삭제함
+    
+Return: hdfs dfs 툴의 표준 출력을 문자열로 리턴함
+'''
+def delete_file_in_hdfs(uri, skip_trash=True):
+    skip_trash_str = ' -skipTrash' if skip_trash else ''
+    return cmd_executor('hdfs dfs -rm -r %s %s' %(skip_trash_str, uri))
+
+
 
 # 현 Spark 환경에서 Total Executor Core의 갯수를 return
 # Total Executor Core의 갯수가 Parallelism의 동시 Task 실행 수를 결정함
