@@ -1,4 +1,6 @@
-############ 0. settings ############
+'''
+    0.  Settings
+'''
 
 
 import os
@@ -45,7 +47,9 @@ if gpus:
 strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
 
-############ 1. input & pre-processing ############
+'''
+    1. Input & Pre-processing
+'''
 
 
 tokenizer = AutoTokenizer.from_pretrained("tokenizers/path...", max_len=256)
@@ -117,7 +121,9 @@ dist_mlm_train_dataset = strategy.experimental_distribute_dataset(tf_tokenized_t
 dist_mlm_test_dataset = strategy.experimental_distribute_dataset(tf_tokenized_test_dataset)
 
 
-############ 2. Bulid the Model ############
+'''
+    2. Bulid the Model
+'''
 
 from transformers import BertConfig, TFBertForMaskedLM
 
