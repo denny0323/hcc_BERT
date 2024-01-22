@@ -153,7 +153,7 @@ data_collator = DataCollatorForWholeWordMask(tokenizer=tokenizer,
 
 
 '''
-    2. Build Model
+    2. Build the Model
 '''
 
 Model_size = 'Small'
