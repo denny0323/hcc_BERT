@@ -478,11 +478,16 @@ def print_confusion_matrix(confusion_matrix, axes,
     axes.set_title(class_label)
 
 
-predicts = np.vstack
+test_labels_no_last = np.hstack(test_labels[:-1])
+test_labels_last = test_labels[-1]
+test_labels = tf.concat([test_labels_no_last, test_labels_last], axis=0)
 
+predicts = np.vstack(np.asarray(predicts)).squeeze()
+pred_probas = np.vstack(np.asarray(pred_probas)).squeeze()
 
 
 from sklearn.metrics import confusion_matrix
 
 cfm = confusion_matrix(test_labels, predicts)
-
+fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+print_confusion_matrix(cfm, ax, "Confusion Matrix for class_1", ["0", "1"])
