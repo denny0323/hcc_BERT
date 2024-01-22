@@ -299,4 +299,49 @@ with strategy.scope():
 '''
     5. Train
 '''
+@tf.function(experimental_relax_shapes=True)
+def train_on_batch(model, tensors):
+
+    with tf.GradientTape() as tape:
+        output = model(tensors, training=True)
+        loss = output.loss
+        logits = output.logits
+
+    grads = tape.gradient(loss, model.trainable_weights)
+    optimizer.apply_gradients(zip(grads, model.trainable_weights))
+    y_pred = tf.squeeze(tf.cast(tf.sigmoid(logits) > 0.5, dtype=tf.int32))
+
+    train_loss_tracker.update_state(loss)
+    train_acc_metric.update_state(tensors['labels'], y_pred)
+    train_microf1_metric.update_state(tf.reshape(tensors['labels'], (-1, 1)), tf.sigmoid(logits))
+    train_macrof1_metric.update_state(tf.reshape(tensors['labels'], (-1, 1)), tf.sigmoid(logits))
+
+    return loss, logits, {'train_loss': train_loss_tracker.result(), 'train_acc': train_acc_metric.result(),
+                          'train_microf1': train_microf1_metric.result(), 'train_macrof1': train_macrof1_metric.result()}
+
+
+@tf.function
+def distributed_train_step(model, tensors):
+    per_replica_losses, logits, train_dict = strategy.run(train_on_batch, args=(model, tensors,))
+    return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None), logits, train_dict
+
+
+@tf.function(experimental_relax_shapes=True)
+def valid_on_batch(model, tensor_val):
+    val_output = model(tensor_val, training=False)
+    val_loss = val_output.loss
+    val_logits = val_output.logits
+
+    y_pred_val = tf.squeeze(tf.cast(tf.sigmoid(val_logits) > 0.5, dtype=tf.int32))
+
+    val_loss_tracker.update_state(val_loss)
+    val_acc_metric.update_state(tensor_val['labels'], y_pred_val)
+    val_microf1_metric.update_state(tf.reshape(tensorf_val['labels'], (-1, 1)), tf.sigmoid(val_logits))
+    val_macrof1_metric.update_state(tf.reshape(tensorf_val['labels'], (-1, 1)), tf.sigmoid(val_logits))
+
+    return {'val_loss': val_loss_tracker.result(), 'val_acc': val_acc_metric.result(),
+            'val_microf1': val_microf1_metric.result(), 'val_macrof1': val_macrof1_metric.result()}
+
+
+
 
