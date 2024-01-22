@@ -179,7 +179,11 @@ with strategy.scope():
   
   
   
-#### training loop (ref: Tensorflow Tutorial)
+'''
+    3. Train (ref: Tensorflow Tutorial)
+    without model.fit()
+'''
+
 
 #@tf.function
 #def distributed_train_step(data):
@@ -213,7 +217,6 @@ def test_step(inputs):
   test_loss.update_state(loss_test)
   
   
-
 NUM_EPOCHS = 5
 STEPS_PER_EPOCH = len(tf_tokenized_train_dataset)
 EVALUATE_EVERY = 500
