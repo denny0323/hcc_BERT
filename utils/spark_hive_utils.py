@@ -35,8 +35,6 @@ Parameters:
     format_string : 하나의 '%f' Symbol이 있어야 함
     verbose : False일 경우, 시간은 측정하지만 출력은 하지 않음 
 '''
-
-
 @contextmanager
 def elapsed_time(format_string='Elapsed time: %f seconds', verbose=True):
     start_time = perf_counter()
@@ -44,6 +42,9 @@ def elapsed_time(format_string='Elapsed time: %f seconds', verbose=True):
     elapsed_time = perf_counter() - start_time
     if verbose:
         print(format_string % elapsed_time)
+
+
+
 
 
 # seconds 시간 동안 실행이 끝나지 않으면 TimeoutException을 발생
@@ -64,6 +65,11 @@ def time_limit(seconds, msg='Timed out!'):
         signal.alarm(0)
 
 
+
+
+
+
+
 # 사용 Thread수를 제한하여 PyArrow함수가 돌도록하는 함수
 '''
 Description:
@@ -78,8 +84,6 @@ Example:
     with pyarrow_cpu_count(10):
         pd.read_parquet(file)
 '''
-
-
 @contextmanager
 def pyarrow_cpu_count(count):
     current_cpu_count = cpu_count()
@@ -87,6 +91,11 @@ def pyarrow_cpu_count(count):
         set_cpu_count(count)
     yield
     set_cpu_count(current_cpu_count)
+
+
+
+
+
 
 
 # Pyspark에서 Hive로 데이터 접근이 가능 지 체크하는 함수
@@ -97,8 +106,6 @@ Parameters:
     timeout : Hive에 접속을 시도하고 몇 초 동안 기다릴 지 설정 (기본 60초)
     verbose : True의 경우, 시간 내 접속이 잘 되면 현재 시각을, 안되면 경고를 출력함
 '''
-
-
 def check_hive_available(hive_context=None, timeout=60, verbose=False):
     # 내부 함수 : 거듭 사용을 위해 함수로 만듦
     def _inner_check_hive(hive_context):
@@ -119,6 +126,11 @@ def check_hive_available(hive_context=None, timeout=60, verbose=False):
             return _inner_check_hive(hs.hive_context)
     else:
         return _inner_check_hive(hive_context)
+
+
+
+
+
 
 
 # Hyspark 사용을 Context Manager하도록 도와주는 함수
@@ -144,8 +156,6 @@ Usage:
         ss = hs.spark_context
         ss = hs.spark_session
 '''
-
-
 @contextmanager
 def create_spark_session(app_name=None, mem_per_core=2, verbose=False,
                          check_hive_connection=True,
@@ -195,6 +205,9 @@ def create_spark_session(app_name=None, mem_per_core=2, verbose=False,
         hs.stop()  # 어떤 경우에도 반드시 자원 반환이 실행되어야 함(Error시에도)
 
 
+
+
+
 # Shell 명령문을 실행하고 그 결과를 문자열로 받아오는 함수
 # source : https://stackoverflow.com/questions/7372592/python-how-can-i-execute-a-jar-file-through-a-python-script/22081569#22081569
 '''
@@ -206,8 +219,6 @@ Parameters:
 Return:
     Shell 명령문의 실행 결과인 표준 출력을 문자열로 return
 '''
-
-
 def cmd_executor(args, delim=' ', verbose=True):
     if not isinstance(args, list):
         args = args.split(delim)
@@ -229,6 +240,10 @@ def cmd_executor(args, delim=' ', verbose=True):
         print('Shell Execute REsult: \n%s' % res)
     return res
 
+
+
+
+
 # Local Source로부터 Destination URI(Uniform Resource Identifier)로의 파일 복사 함수
 # (cmd_executor를 이용하여 디렉토리 구조도 복사)
 '''
@@ -247,6 +262,10 @@ def copy_local_to_hdfs(source_local, dest_uri='.'):
     return cmd_executor('hdfs dfs -put %s %s' % (source_local, dest_uri))
 
 
+
+
+
+
 # Source URI (Uniform Resource Identifier)로부터 Local Destination으로의
 # 파일(디렉토리 구조도 포함) 복사 함수 (cmd_executor 함수 이용)
 
@@ -262,6 +281,9 @@ Return: hdfs dfs 툴의 표준 출력을 문자열로 리턴함
 def copy_hdfs_to_local(source_uri, dest_local='.'):
     return cmd_executor('hdfs dfs -copyToLocal %s %s' %(source_uri, dest_local))
 
+
+
+
 # HDFS에서 URI에 해당되는 파일, 디렉토리 삭제 (디렉토리 내부도 Recursively삭제)
 '''
 Parameters:
@@ -276,6 +298,39 @@ def delete_file_in_hdfs(uri, skip_trash=True):
 
 
 
+# HDFS에서 'ls'명령 사용
+'''
+Parameters:
+    path: HDFS에서 살펴보고자 하는 위치, 기본값은 사용자 홈 디렉토리 (.)
+    recursive: True일 경우, 디렉토리를 재귀적으로 들어가며 정보처리 (default: False)
+'''
+def ls_in_hdfs(path='.', recursive=False):
+    recursive_arg = '-R' if recursive else ''
+    return cmd_executor('hdfs dfs -ls %s %s' %(recursive_arg, path))
+
+
+
+
+# path가 파일이든, 디렉토리든 무조건 삭제하는 함수
+# verbose=Trued이면, 로그를 프린트하지만, 지워지는 팡리이 없을 경우에는 프린트 안함
+def delete_file_or_dir(path, verbose=False):
+    type_str = 'directory'
+
+    try:
+        rmtree(path) # First, try deleting a directory
+    except:          # However, 'path' is not a directory
+        try:
+            remove_(path)
+            type_str = 'file'
+        except:
+            verbose = False
+    if verbose:
+        print('Deleted %s %s from %s' %(type_str, path, getcwd_()))
+
+
+
+
+
 # 현 Spark 환경에서 Total Executor Core의 갯수를 return
 # Total Executor Core의 갯수가 Parallelism의 동시 Task 실행 수를 결정함
 # (즉, 한번에 동시에 실행되는 Task의 개수라고 생각할 수 있음)
@@ -285,10 +340,12 @@ def get_total_num_executor_cores(spark_context):
     return int(n_instances) * int(n_cores_per_executor)
 
 
+
 # Spark Context환경설정 Literal(conf_str)에 대한 설정값을 str로 리턴
 # (예: get_conf(sc, 'spark.driver.memory')는 해당 설정값을 문자열로 리턴함
 def get_spark_conf(spark_context, conf_str):
     return spark_context._conf.get(conf_str)
+
 
 
 # Spark SQLContext관련 설정값을 리턴
@@ -298,11 +355,15 @@ def get_sql_conf(hive_context, conf_str):
     return hive_context.getConf(conf_str)
 
 
+
+
 # Spark SQLContext관련 설정값을 바꿈
 # 예를 들어, 'spark.sql.shffle.partitions', 'spark.sql.files.maxPartitionBytes' 등의
 # 환경설정을 바꿀 수 있음
 def set_sql_conf(hive_context, conf_str, value):
     return hive_context.setConf(conf_str, value)
+
+
 
 
 # 'spark.sql.shuffle.partitions' 속성의 설정값을 최적화하는 함수
@@ -334,15 +395,23 @@ def optimize_shuffle_partitions(hive_context, spark_context, multiplier=3,
     return set_sql_conf(hive_context, property_str, new_val)
 
 
+
+
 # 'spark.sql.shuffle.partitions'속성의 설정값을 바꾸는 함수 (의미는 위 함수 참조)
 def change_shuffle_partitions(hive_context, num_shuffle_partitions):
     return set_sql_conf(hive_context, 'spark.sql.shuffle.partitions',
                         num_shuffle_partitions)
 
 
+
+
+
 # Pandas DataFrame의 Memory 사용량을 MegaBytes로 리턴
 def get_mem_usage_in_megabytes(pandas_df):
     return float(sum(pandas_df.memory_usage())) / 1024 / 1024
+
+
+
 
 
 # sql_as_pandas_w_pyspark, df_as_pandas_with_pyspark에서 사용되는 함수
@@ -363,6 +432,10 @@ def _check_cast_dict(cast_dict):
                          "Supported values are %s. " %
                          (diff, supported_cast_strings))
     return cast_dict
+
+
+
+
 
 
 # sql_as_pandas_with_pyspark, df_as_pandas_with_pyspark에서 사용되는 함수
@@ -413,6 +486,10 @@ def _get_cast_expr(pyspark_df, convert_decimal, cast_dict,
     return [] if num_cast == 0 else cast_str_list
 
 
+# 아래 df_as_pandas_with_pyspark 함수를 이용하여 SQL 실행 결과를 pd.DataFrame으로 받아오는 함수
+# hive_context=None일 경우, 알아서 Pyspark을 연결하여 데이터 받아옴 (편의성 극대화)
+# kwargsms Parquet Engine에 넘기는 매개변수를 의미함
+# (PyArrow API문서의 pyarrow.parquet.read_table 함수 참조)
 def sql_as_pandas_with_pyspark(sql, hive_context=None,
                                convert_decimal=True, cast_dict=None,
                                delete_temp_hdfs=True, delete_temp_local=True,
@@ -461,3 +538,5 @@ def sql_as_pandas_with_pyspark(sql, hive_context=None,
                                      *positional_args, **kwargs)
            for ql in sql]
     return res[0] if len(res) == 1 else res
+
+
