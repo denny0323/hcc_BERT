@@ -257,7 +257,12 @@ class BertCustomedEmbeddings(nn.Module):
         self.cust_id1 = 5,
         self.cust_id2 = 5,
         self.cust_id3 = 5,
-        ...
+        self.cust_id4 = 5,
+        self.cust_id5 = 6,
+        self.cust_id6 = 6,
+        self.cust_id7 = 6,
+        self.cust_id8 = 6,
+        self.cust_id9 = 6,
         self.cust_id10 = 10
 
         self.padding_idx=0
@@ -287,13 +292,16 @@ class BertCustomedEmbeddings(nn.Module):
         token_type_ids: Optional[torch.LongTensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
-        """
         cust_id1 = None,
         cust_id2 = None,
         cust_id3 = None,
-        ...
+        cust_id4 = None,
+        cust_id5 = None,
+        cust_id6 = None,
+        cust_id7 = None,
+        cust_id8 = None,
+        cust_id9 = None,
         cust_id10 = None,
-        """
         past_key_values_length: int = 0,
     ) -> torch.Tensor:
         if input_ids is not None:
@@ -1155,7 +1163,7 @@ class BertModel(BertPreTrainedModel):
         )
 
 
-class BertModel(BertPreTrainedModel):
+class BertModelWithCustomEmbeddings(BertPreTrainedModel):
     """
     The model with custom embedding module.
     """
@@ -1197,12 +1205,16 @@ class BertModel(BertPreTrainedModel):
         input_ids: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
-        
         cust_id1 = None,
         cust_id2 = None,
-        ...
+        cust_id3 = None,
+        cust_id4 = None,
+        cust_id5 = None,
+        cust_id6 = None,
+        cust_id7 = None,
+        cust_id8 = None,
+        cust_id9 = None,
         cust_id10 = None,
-        
         position_ids: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
@@ -1302,7 +1314,13 @@ class BertModel(BertPreTrainedModel):
             past_key_values_length=past_key_values_length,
             cust_id1=cust_id1,
             cust_id2=cust_id2,
-            ...
+            cust_id3=cust_id3,
+            cust_id4=cust_id4,
+            cust_id5=cust_id5,
+            cust_id6=cust_id6,
+            cust_id7=cust_id7,
+            cust_id8=cust_id8,
+            cust_id9=cust_id9,
             cust_id10=cust_id10
         )
         encoder_outputs = self.encoder(
@@ -1907,6 +1925,144 @@ class BertForSequenceClassification(BertPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+
+
+@add_start_docstrings(
+    """
+    Bert Model transformer with a sequence classification/regression head on top 
+    (a linear layer on top of the pooled output) e.g. for GLUE tasks.
+    and custom embedding layers on word embeddings
+    """,
+    BERT_START_DOCSTRING,
+)
+class BertForSequenceClassificationWithCustomEmbeddings(BertPreTrainedModel):
+    def __init__(self, config,
+        pretrained_model_root=None,
+        pretrained_model_name=None,
+        num_labels=1,
+        problem_type="multi_label_classification"
+    ):
+        super().__init__(config)
+        self.config = config
+        self.pretrained_model_root = pretrained_model_root
+        self.pretrained_model_name = pretrained_model_name
+        self.problem_type = problem_type
+
+        if self.pretrained_model_name is not None and self.pretrained_model_root is not None:
+            self.bert = BertModelWithCustomEmbeddings.from_pretrained(
+                self.pretrained_model_root+self.pretrained_model_name
+            )
+            self.pretrained_config = self.bert.config
+            self.config = self.pretrained_config
+        else:
+            self.bert = BertModelWithCustomEmbeddings.from_config(self.config)
+
+        self.num_labels = num_labels
+        self.config.update({'num_labels': self.num_labels,
+                            'problem_type': self.problem_type})
+
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    @add_start_docstrings_to_model_forward(BERT_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
+    @add_code_sample_docstrings(
+        checkpoint=_CHECKPOINT_FOR_SEQUENCE_CLASSIFICATION,
+        output_type=SequenceClassifierOutput,
+        config_class=_CONFIG_FOR_DOC,
+        expected_output=_SEQ_CLASS_EXPECTED_OUTPUT,
+        expected_loss=_SEQ_CLASS_EXPECTED_LOSS,
+    )
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        labels: Optional[torch.Tensor] = None,
+        # - * - custom ids - * - #
+        cust_id1: torch.Tensor = None,
+        cust_id2: torch.Tensor = None,
+        cust_id3: torch.Tensor = None,
+        ...
+        cust_id10: torch.Tensor = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
+            Labels for computing the sequence classification/regression loss. Indices should be in `[0, ...,
+            config.num_labels - 1]`. If `config.num_labels == 1` a regression loss is computed (Mean-Square loss), If
+            `config.num_labels > 1` a classification loss is computed (Cross-Entropy).
+        """
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+            cust_id1=cust_id1,
+            cust_id2=cust_id2,
+            cust_id3=cust_id3,
+            ...
+            cust_id10=cust_id10
+        )
+
+        pooled_output = outputs[1]
+
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+
+        loss = None
+        if labels is not None:
+            if self.config.problem_type is None:
+                if self.num_labels == 1:
+                    self.config.problem_type = "regression"
+                elif self.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
+                    self.config.problem_type = "single_label_classification"
+                else:
+                    self.config.problem_type = "multi_label_classification"
+
+            if self.config.problem_type == "regression":
+                loss_fct = MSELoss()
+                if self.num_labels == 1:
+                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                else:
+                    loss = loss_fct(logits, labels)
+            elif self.config.problem_type == "single_label_classification":
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
+        if not return_dict:
+            output = (logits,) + outputs[2:]
+            return ((loss,) + output) if loss is not None else output
+
+        return SequenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+        )
+
+
 
 
 @add_start_docstrings(
