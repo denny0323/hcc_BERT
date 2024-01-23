@@ -1,7 +1,6 @@
 '''
         cmd usage
 '''
-import Dataset
 
 # deepspeed --num_gpus=2 {this_script}.py --deepspeed_config ds_config_zero2.json
 # deepspeed --include localhost:0,1, --master_port {} {this script}.py --deepspeed_config ds_config_zero2.json
