@@ -6,7 +6,7 @@ import numpy as np
     dataset에 mapping하여 사용함  
 '''
 def MultiTokenMaskingDataCollator(examples, tokenizer,
-                                  min_num_tokens=3,
+                                  min_num_tokens=50,
                                   MLM_PROB=0.15, SHORT_SEQ_PROB=0.1, MAX_LENGTH=256):
 
     # Define the outputs
