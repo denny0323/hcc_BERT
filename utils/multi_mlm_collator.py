@@ -1,7 +1,13 @@
 import random
 import numpy as np
 
-def MultiTokenMaskingDataCollator(examples):
+'''
+    실제 data_collator함수라기보다는 tokenized_fn에 가까움
+    dataset에 mapping하여 사용함  
+'''
+def MultiTokenMaskingDataCollator(examples, tokenizer,
+                                  min_num_tokens=3,
+                                  SHORT_SEQ_PROB=0.1, MAX_LENGTH=256):
 
     # Define the outputs
     examples["input_ids"] = []
@@ -29,7 +35,16 @@ def MultiTokenMaskingDataCollator(examples):
             seq = seq[:max_num_tokens]
 
         if curr_len > min_num_tokens:
-
+            '''
+            (참고)  Binomial(n, p, size)
+                n : 각 sample당 가질 수 있는 최대 정수
+                p : probability of success
+                size : sample 크기
+                
+                즉, Binomial(1, 0.15, 100)
+                = 샘플당 1일 확률이 0.15인 sample 100개를 draw
+                (output) = 1값을 갖는 index가 masking확보 
+            '''
             # 문장의 시작 Token(=CLS)와 끝 또는 문장 구분 Token(=SEP)는 마스킹하지 않음
             mask = np.random.binomial(1, p=MLM_PROB, size=(curr_len,))
 
@@ -44,3 +59,28 @@ def MultiTokenMaskingDataCollator(examples):
                 # examples["labels"]와는 1 index차이가 남
                 curr_labels[mask_idx] = seq[mask_idx]
                 seq[mask_idx] = tokenizer.mask_token_id
+
+            # Define the outputs
+            input_ids = tokenizer.build_inputs_with_special_tokens(seq)
+            curr_labels.append(-100)
+            curr_labels += [-100]
+
+            token_type_ids = tokenizer.create_token_type_ids_from_sequences(seq)
+            padded = tokenizer.pad({
+                "input_ids": input_ids,
+                "token_type_ids": token_type_ids,
+            }, padding="max_length", truncation=True)
+
+            examples["input_ids"].append(padded["input_ids"])
+            examples["token_type_ids"].append(padded["token_type_ids"])
+            examples["attention_mask"].append(padded["attention_mask"])
+            examples["labels"].append(curr_labels)
+
+
+    del examples["tokenizerd_sequences"]
+    del examples["evnt"]
+    del examples["__index_level_0__"]
+
+    return examples
+
+
