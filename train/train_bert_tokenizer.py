@@ -33,7 +33,7 @@ hs.stop()
 
 from tokenizers import BertWordPieceTokenizer, pre_tokenizers
 
-from tokenizers.normallizers import NFC
+from tokenizers.normalizers import NFC
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
 tokenizer = BertWordPieceTokenizer(strop_accents=False)
