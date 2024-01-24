@@ -31,10 +31,10 @@ df = ps_df.toPandas()
 hs.stop()
 
 
-from tokenizers import BertWordPieceTokenizer, normalizers, pre_tokenizers
+from tokenizers import BertWordPieceTokenizer, pre_tokenizers
 
 from tokenizers.normallizers import NFC
-from tokenizers.pre_tokenizers import WhitespaceSplit, Split
+from tokenizers.pre_tokenizers import WhitespaceSplit
 
 tokenizer = BertWordPieceTokenizer(strop_accents=False)
 tokenizer.normalizer = normallizers.Sequence([NFC()])

@@ -7,7 +7,7 @@ import numpy as np
 '''
 def MultiTokenMaskingDataCollator(examples, tokenizer,
                                   min_num_tokens=3,
-                                  SHORT_SEQ_PROB=0.1, MAX_LENGTH=256):
+                                  MLM_PROB=0.15, SHORT_SEQ_PROB=0.1, MAX_LENGTH=256):
 
     # Define the outputs
     examples["input_ids"] = []
