@@ -254,7 +254,7 @@ class BertCustomedEmbeddings(nn.Module):
         
         
         """   < Custom Embeds > """
-        self.cust_id1 = 5,
+        self.cust_id1 = 2,
         self.cust_id2 = 5,
         self.cust_id3 = 5,
         self.cust_id4 = 5,
