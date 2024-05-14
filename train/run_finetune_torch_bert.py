@@ -165,7 +165,7 @@ class BertForMultiLabelClassification(nn.Moudle):
                                                                              config=self.config)
 
         self.num_labels = num_labels
-        self.loss_fn = BertModelWithCustomEmbeddings(reduction='mean')
+        self.loss_fn = BCEWithLogitsLoss(reduction='mean')
         
         self.classifier = Linear(self.pretrained_model.config.hidden_size, self.num_labels))
         self.dropout = Dropout(p=self.pretrained_model.config.hidden_dropout_prob)
