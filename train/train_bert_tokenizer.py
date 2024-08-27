@@ -31,13 +31,12 @@ df = ps_df.toPandas()
 hs.stop()
 
 
-from tokenizers import BertWordPieceTokenizer, pre_tokenizers
-
+from tokenizers import BertWordPieceTokenizer, pre_tokenizers, normalizers
 from tokenizers.normalizers import NFC
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
-tokenizer = BertWordPieceTokenizer(strop_accents=False)
-tokenizer.normalizer = normallizers.Sequence([NFC()])
+tokenizer = BertWordPieceTokenizer(strip_accents=False)
+tokenizer.normalizer = normalizers.Sequence([NFC()])
 tokenizer.pre_tokenizer = pre_tokenizers.Sequence([WhitespaceSplit()])
 
 special_tokens = ['[UNK]', '[PAD]', '[CLS]', '[SEP]', '[MASK]']
